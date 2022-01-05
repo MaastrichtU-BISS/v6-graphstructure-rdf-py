@@ -9,6 +9,10 @@ server after encryption.
 """
 import time
 
+from pandas.core.frame import DataFrame
+
+import rdflib
+
 import pandas as pd
 from vantage6.tools.util import info, warn
 
@@ -55,21 +59,19 @@ def master(client, data, *args, **kwargs):
     results = client.get_results(task_id=task.get("id"))
     print(results)
 
-    # combine all results into one dataframe
-    dfs = [pd.DataFrame.from_dict(res) for res in results]
-    res_df = pd.concat(dfs, keys=range(len(results)))
-    
-    # Calculate overall mean over all nodes
-    res_df['total_mean'] = res_df['count'] * res_df['mean']
-    res_total = pd.DataFrame(res_df.groupby(level=1).sum())
-    res_total['mean'] = res_total['total_mean'] / res_total['count']
+    result_sets = [set[res] for res in results]
 
-    info("master algorithm complete")
+    unionset = set()
+    interset = set()
+    # union and intersect the sets to create a graph with all and common data
+    # elements respectively
+    for res in result_sets:
+        unionset = unionset.union(res)
+        interset = interset.intersection(res)
 
-    # return all the messages from the nodes
-    return res_total['mean'].to_dict()
+    return {'union': unionset, 'intersect': interset}
 
-def RPC_some_example_method(data, *args, **kwargs):
+def RPC_some_example_method(data: rdflib.Graph, *args, **kwargs):
     """Some_example_method.
 
     Do computation on data local to this node and send it back to 
@@ -77,9 +79,39 @@ def RPC_some_example_method(data, *args, **kwargs):
 
     In this case, take mean `Age` on groups of different `Sex`
     """
-    info("Computing mean age for males and females")
-    result = data.groupby("Sex").Age.aggregate(['count', 'mean'])
+    info(f"Getting graph structure from graph with {len(data)} triples")
+    classes = data.query("""
+        PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+        SELECT DISTINCT ?classUri
+        WHERE {
+            ?instance rdf:type ?class.
+        }
+    """)
+
+    info(f"Got {len(classes)} classes")
+
+    results = set()
+
+    for c in classes:
+        classUri = c.classUri
+        if not (classUri.startswith("http://www.w3.org/1999/02/22-rdf-syntax-ns#") | 
+                        classUri.startswith("http://www.w3.org/2002/07/owl#") | 
+                        classUri.startswith("http://www.w3.org/2000/01/rdf-schema#")):
+            relations = data.query("""
+                PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+                SELECT DISTINCT ?p ?o
+                WHERE {
+                    ?instances rdf:type <%s> .
+                    ?instances ?p ?relatedInstance .
+                    ?relatedInstance rdf:type ?o .
+                }
+            """ % classUri)
+
+            for rel in relations:
+                results.add((classUri, rel.p, rel.o))
 
     # what you return here is send to the central server. So make sure
     # no privacy sensitive data is shared
-    return result.to_dict()
+    return list(results)
