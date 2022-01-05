@@ -34,7 +34,7 @@ def master(client, data, *args, **kwargs):
     # in this case
     info("Defining input parameters")
     input_ = {
-        "method": "some_example_method",
+        "method": "get_structure",
     }
 
     # create a new task for all organizations in the collaboration.
@@ -71,13 +71,11 @@ def master(client, data, *args, **kwargs):
 
     return {'union': unionset, 'intersect': interset}
 
-def RPC_some_example_method(data: rdflib.Graph, *args, **kwargs):
-    """Some_example_method.
+def RPC_get_structure(data: rdflib.Graph, *args, **kwargs):
+    """RPC_get_structure.
 
-    Do computation on data local to this node and send it back to 
-    central server for further processing.
-
-    In this case, take mean `Age` on groups of different `Sex`
+    Get the structure of the graph held in this node. Currently does not send
+    labels.
     """
     info(f"Getting graph structure from graph with {len(data)} triples")
     classes = data.query("""
