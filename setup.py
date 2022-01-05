@@ -15,9 +15,9 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 
 # setup the package
 setup(
-    name='v6-graphstructure-rdf-py',
+    name='v6_graphstructure_rdf_py',
     version="1.0.0",
-    description='vantage6 biolerplate',
+    description='vantage6 graph structure',
     long_description=long_description,
     long_description_content_type='text/markdown',
     url='https://github.com/jaspersnel/v6-graphstructure-rdf-py',
