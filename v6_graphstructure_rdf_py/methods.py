@@ -70,7 +70,7 @@ def master(client, data, *args, **kwargs):
         unionset = unionset.union(res)
         interset = interset.intersection(res)
 
-    return {'union': unionset, 'intersect': interset}
+    return {'union': list(unionset), 'intersect': list(interset)}
 
 def RPC_get_structure(data: rdflib.Graph, *args, **kwargs):
     """RPC_get_structure.
