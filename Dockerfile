@@ -11,5 +11,6 @@ RUN pip install /app
 
 ENV PKG_NAME=${PKG_NAME}
 
-# Tell docker to execute `docker_wrapper()` when the image is run.
+# Tell docker to execute `ttl_graph_wrapper()` when the image is run.
+# note that this is not the standard wrapper!
 CMD python -c "from ${PKG_NAME}.docker_wrapper import ttl_graph_wrapper; ttl_graph_wrapper('${PKG_NAME}')"

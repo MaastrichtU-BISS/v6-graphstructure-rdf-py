@@ -9,14 +9,10 @@ here = path.abspath(path.dirname(__file__))
 with open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
-# # read the API version from disk
-# with open(path.join(here, 'vantage6', 'tools', 'VERSION')) as fp:
-#     __version__ = fp.read()
-
 # setup the package
 setup(
     name='v6_graphstructure_rdf_py',
-    version="1.0.0",
+    version="0.0.1",
     description='vantage6 graph structure',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -29,12 +25,4 @@ setup(
         'rdflib',
         'sparqlwrapper'
     ]
-    # ,
-    # extras_require={
-    # },
-    # package_data={
-    #     'vantage6.tools': [
-    #         'VERSION'
-    #     ],
-    # }
 )

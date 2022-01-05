@@ -10,18 +10,18 @@ server after encryption.
 import time
 
 from pandas.core.frame import DataFrame
-
 import rdflib
-
 import pandas as pd
+
 from vantage6.tools.util import info, warn
 
 
 def master(client, data, *args, **kwargs):
     """Master algoritm.
 
-    The master algorithm is the chair of the Round Robin, which makes
-    sure everyone waits for their turn to identify themselfs.
+    Requests each node to figure out its underlying structure and send it back
+    to the master, which takes an intersection and union of those structures
+    and returns them to the researcher.
     """
 
     # get all organizations (ids) that are within the collaboration
@@ -57,8 +57,9 @@ def master(client, data, *args, **kwargs):
 
     info("Obtaining results")
     results = client.get_results(task_id=task.get("id"))
-    print(results)
+    info(results)
 
+    # To be able to do set operations
     result_sets = [set[res] for res in results]
 
     unionset = set()
@@ -89,8 +90,10 @@ def RPC_get_structure(data: rdflib.Graph, *args, **kwargs):
 
     info(f"Got {len(classes)} classes")
 
+    # We don't want duplicate things by accident
     results = set()
 
+    # Get outgoing relations for each of the classes
     for c in classes:
         classUri = c.classUri
         if not (classUri.startswith("http://www.w3.org/1999/02/22-rdf-syntax-ns#") | 
@@ -107,9 +110,10 @@ def RPC_get_structure(data: rdflib.Graph, *args, **kwargs):
                 }
             """ % classUri)
 
+            # Add a link of class --p--> o to the results
             for rel in relations:
                 results.add((classUri, rel.p, rel.o))
 
-    # what you return here is send to the central server. So make sure
-    # no privacy sensitive data is shared
+    # send all the 'triples' to the master (cast to list as that should be a 
+    # doable for decoding)
     return list(results)
