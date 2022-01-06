@@ -39,6 +39,10 @@ def ttl_graph_wrapper(module: str):
     wrapper = TTLGraphDockerWrapper()
     wrapper.wrap_algorithm(module)
 
+def sparql_graphstructure_wrapper(module: str):
+    wrapper = SparqlGraphStructureWrapper()
+    wrapper.wrap_algorithm(module)
+
 class WrapperBase(ABC):
 
     def wrap_algorithm(self, module):
@@ -138,6 +142,25 @@ class SparqlDockerWrapper(WrapperBase):
         result = sparql.query().convert().decode()
 
         return pandas.read_csv(io.StringIO(result))
+
+class SparqlGraphStructureWrapper(SparqlDockerWrapper):
+    @staticmethod
+    def load_data(database_uri, input_data):
+        query = """
+        PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+        SELECT DISTINCT ?type1 ?label1 ?p ?labelp ?type2 ?label2
+        WHERE {
+            ?in1 ?p ?in2 .
+            ?in1 a ?type1 .
+            ?in2 a ?type2 .
+            OPTIONAL {?p rdfs:label ?labelp .}
+            OPTIONAL {?type1 rdfs:label ?label1 . }
+            OPTIONAL {?type2 rdfs:label ?label2 . }
+        }
+        """
+        return SparqlDockerWrapper._query_triplestore(database_uri, query)
 
 class TTLGraphDockerWrapper(WrapperBase):
     @staticmethod

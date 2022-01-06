@@ -13,4 +13,4 @@ ENV PKG_NAME=${PKG_NAME}
 
 # Tell docker to execute `ttl_graph_wrapper()` when the image is run.
 # note that this is not the standard wrapper!
-CMD python -c "from ${PKG_NAME}.docker_wrapper import ttl_graph_wrapper; ttl_graph_wrapper('${PKG_NAME}')"
+CMD python -c "from ${PKG_NAME}.docker_wrapper import sparql_graphstructure_wrapper; sparql_graphstructure_wrapper('${PKG_NAME}')"

@@ -10,7 +10,6 @@ server after encryption.
 import time
 
 from pandas.core.frame import DataFrame
-import rdflib
 import pandas as pd
 
 from vantage6.tools.util import info, warn
@@ -60,7 +59,7 @@ def master(client, data, *args, **kwargs):
     info(results)
 
     # To be able to do set operations
-    result_sets = [set[res] for res in results]
+    result_sets = [set[res['structure']] for res in results]
 
     unionset = set()
     interset = set()
@@ -70,50 +69,41 @@ def master(client, data, *args, **kwargs):
         unionset = unionset.union(res)
         interset = interset.intersection(res)
 
-    return {'union': unionset, 'intersect': interset}
+    labels_sets = [set(res['labels']) for res in results]
+    labels_dict = {}
+    for label_set in labels_sets:
+        for uri, lab in label_set:
+            labels_dict[uri] = lab
 
-def RPC_get_structure(data: rdflib.Graph, *args, **kwargs):
+    return {'union': unionset, 'intersect': interset, 'labels': labels_dict}
+
+def RPC_get_structure(data: pd.DataFrame, *args, **kwargs):
     """RPC_get_structure.
 
-    Get the structure of the graph held in this node. Currently does not send
-    labels.
+    Get the structure of the graph held in this node.
     """
-    info(f"Getting graph structure from graph with {len(data)} triples")
-    classes = data.query("""
-        PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+    info(f"Got {len(data)} links")
+    structure = ['type1', 'p', 'type2']
+    labels = ['label1', 'labelp', 'label2']
 
-        SELECT DISTINCT ?classUri
-        WHERE {
-            ?instance rdf:type ?class.
-        }
-    """)
+    filters = [
+        'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
+        'http://www.w3.org/2002/07/owl#',
+        'http://www.w3.org/2000/01/rdf-schema#'
+    ]
 
-    info(f"Got {len(classes)} classes")
+    for col in structure:
+        for filter in filters:
+            data = data[~data[col].str.startswith(filter)]
 
-    # We don't want duplicate things by accident
-    results = set()
+    info(f'Left with {len(data)} after filtering')
 
-    # Get outgoing relations for each of the classes
-    for c in classes:
-        classUri = c.classUri
-        if not (classUri.startswith("http://www.w3.org/1999/02/22-rdf-syntax-ns#") | 
-                        classUri.startswith("http://www.w3.org/2002/07/owl#") | 
-                        classUri.startswith("http://www.w3.org/2000/01/rdf-schema#")):
-            relations = data.query("""
-                PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+    labels_set = set()
+    for _, row in data.iterrows():
+        for col1, col2 in zip(structure, labels):
+            labels_set.add((row[col1], row[col2]))
 
-                SELECT DISTINCT ?p ?o
-                WHERE {
-                    ?instances rdf:type <%s> .
-                    ?instances ?p ?relatedInstance .
-                    ?relatedInstance rdf:type ?o .
-                }
-            """ % classUri)
-
-            # Add a link of class --p--> o to the results
-            for rel in relations:
-                results.add((classUri, rel.p, rel.o))
-
-    # send all the 'triples' to the master (cast to list as that should be a 
-    # doable for decoding)
-    return list(results)
+    return({
+        'structure': list(data[structure].to_records(index=False)),
+        'labels': list(labels_set),
+    })
