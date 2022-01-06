@@ -56,10 +56,12 @@ def master(client, data, *args, **kwargs):
 
     info("Obtaining results")
     results = client.get_results(task_id=task.get("id"))
-    info(results)
 
+    info(str(results))
+
+    info("Combining structure results")
     # To be able to do set operations
-    result_sets = [set[res['structure']] for res in results]
+    result_sets = [set(res['structure']) for res in results]
 
     unionset = set()
     interset = set()
@@ -67,15 +69,20 @@ def master(client, data, *args, **kwargs):
     # elements respectively
     for res in result_sets:
         unionset = unionset.union(res)
-        interset = interset.intersection(res)
+        if len(interset) == 0:
+            interset = res
+        else:
+            interset = interset.intersection(res)
 
+    info("Combining labels")
     labels_sets = [set(res['labels']) for res in results]
     labels_dict = {}
     for label_set in labels_sets:
         for uri, lab in label_set:
             labels_dict[uri] = lab
 
-    return {'union': unionset, 'intersect': interset, 'labels': labels_dict}
+    info("Returning data")
+    return {'union': list(unionset), 'intersect': list(interset), 'labels': labels_dict}
 
 def RPC_get_structure(data: pd.DataFrame, *args, **kwargs):
     """RPC_get_structure.
@@ -104,6 +111,6 @@ def RPC_get_structure(data: pd.DataFrame, *args, **kwargs):
             labels_set.add((row[col1], row[col2]))
 
     return({
-        'structure': list(data[structure].to_records(index=False)),
+        'structure': [tuple(trp) for trp in list(data[structure].to_records(index=False))],
         'labels': list(labels_set),
     })
