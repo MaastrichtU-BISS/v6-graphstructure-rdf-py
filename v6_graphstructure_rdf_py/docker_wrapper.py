@@ -132,6 +132,9 @@ class SparqlDockerWrapper(WrapperBase):
     @staticmethod
     def load_data(database_uri, input_data):
         query = input_data['query']
+        if input_data.get('master'):
+            info("Not querying endpoint in master container")
+            return pandas.DataFrame()
         return SparqlDockerWrapper._query_triplestore(database_uri, query)
 
     @staticmethod
@@ -146,6 +149,10 @@ class SparqlDockerWrapper(WrapperBase):
 class SparqlGraphStructureWrapper(SparqlDockerWrapper):
     @staticmethod
     def load_data(database_uri, input_data):
+        if input_data.get('master'):
+            info("Not querying endpoint in master container")
+            return pandas.DataFrame()
+
         query = """
         PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
         PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
