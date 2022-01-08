@@ -74,15 +74,11 @@ def master(client, data, *args, **kwargs):
         else:
             interset = interset.intersection(res)
 
-    info("Combining labels")
-    labels_sets = [set(res['labels']) for res in results]
-    labels_dict = {}
-    for label_set in labels_sets:
-        for uri, lab in label_set:
-            labels_dict[uri] = lab
+    info("combining URI data")
+    uri_data = {k: v for res in results for k, v in res['uri_data'].items()}
 
     info("Returning data")
-    return {'union': list(unionset), 'intersect': list(interset), 'labels': labels_dict}
+    return {'union': list(unionset), 'intersect': list(interset), 'uri_data': uri_data}
 
 def RPC_get_structure(data: pd.DataFrame, *args, **kwargs):
     """RPC_get_structure.
@@ -92,25 +88,25 @@ def RPC_get_structure(data: pd.DataFrame, *args, **kwargs):
     info(f"Got {len(data)} links")
     structure = ['type1', 'p', 'type2']
     labels = ['label1', 'labelp', 'label2']
+    literals = ['type1', 'p', 'datatype']
 
-    filters = [
-        'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
-        'http://www.w3.org/2002/07/owl#',
-        'http://www.w3.org/2000/01/rdf-schema#'
-    ]
+    class_data = data[~data['type2'].isna()]
+    literal_data = data[~data['datatype'].isna()]
 
-    for col in structure:
-        for filter in filters:
-            data = data[~data[col].str.startswith(filter)]
+    info("Looking up all classes")
+    uri_data = {uri: {'type': 'class'} for uri in class_data['type1'].unique()}
+    uri_data = {**uri_data, **{uri: {'type': 'class'} for uri in class_data['type2'].unique()}}
+    uri_data = {**uri_data, **{uri: {'type': 'literal'} for uri in literal_data['datatype'].unique()}}
 
-    info(f'Left with {len(data)} after filtering')
-
-    labels_set = set()
+    info("Getting URI metadata")
     for _, row in data.iterrows():
         for col1, col2 in zip(structure, labels):
-            labels_set.add((row[col1], row[col2]))
+            if not pd.isna(row[col2]):
+                if row[col1] in uri_data:
+                    uri_data[row[col1]]['label'] = row[col2]
 
+    info("Returning data")
     return({
-        'structure': [tuple(trp) for trp in list(data[structure].to_records(index=False))],
-        'labels': list(labels_set),
+        'structure': [tuple(trp) for trp in list(class_data[structure].to_records(index=False))] + [tuple(trp) for trp in list(literal_data[literals].to_records(index=False))],
+        'uri_data': uri_data,
     })

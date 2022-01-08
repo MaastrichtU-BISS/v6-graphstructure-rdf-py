@@ -154,18 +154,44 @@ class SparqlGraphStructureWrapper(SparqlDockerWrapper):
             return pandas.DataFrame()
 
         query = """
-        PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 
-        SELECT DISTINCT ?type1 ?label1 ?p ?labelp ?type2 ?label2
-        WHERE {
-            ?in1 ?p ?in2 .
-            ?in1 a ?type1 .
-            ?in2 a ?type2 .
-            OPTIONAL {?p rdfs:label ?labelp .}
-            OPTIONAL {?type1 rdfs:label ?label1 . }
-            OPTIONAL {?type2 rdfs:label ?label2 . }
-        }
+            SELECT * WHERE {
+                {
+                SELECT DISTINCT ?type1 ?label1 ?p ?labelp ?type2 ?label2
+                    WHERE {
+                        ?in1 ?p ?in2 .
+                        ?in1 a ?type1 .
+                        ?in2 a ?type2 .
+                        OPTIONAL {?p rdfs:label ?labelp .}
+                        OPTIONAL {?type1 rdfs:label ?label1 . }
+                        OPTIONAL {?type2 rdfs:label ?label2 . }
+                        FILTER(
+                            !CONTAINS(STR(?type2), "http://www.w3.org/2000/01/rdf-schema#") &&
+                            !CONTAINS(STR(?type2), "http://www.w3.org/1999/02/22-rdf-syntax-ns#") &&
+                            !CONTAINS(STR(?type2), "http://www.w3.org/2002/07/owl#")
+                        ) .
+                }
+                } UNION {
+                    {
+                    SELECT DISTINCT ?type1 ?label1 ?p ?datatype
+                        WHERE {
+                            ?in ?p ?data.
+                            ?in a ?type1 .
+                            OPTIONAL {?type1 rdfs:label ?label1 . }
+                            OPTIONAL {?p rdfs:label ?labelp . }
+                            BIND(DATATYPE(?data) as ?datatype) .
+                            FILTER(!isBLANK(?datatype)) .
+                        }
+                    }
+                }
+                FILTER(
+                    !CONTAINS(CONCAT(STR(?type1), STR(?p)), "http://www.w3.org/2000/01/rdf-schema#") && 
+                    !CONTAINS(CONCAT(STR(?type1), STR(?p)), "http://www.w3.org/1999/02/22-rdf-syntax-ns#") && 
+                    !CONTAINS(CONCAT(STR(?type1), STR(?p)), "http://www.w3.org/2002/07/owl#")
+                ) .
+            }
         """
         return SparqlDockerWrapper._query_triplestore(database_uri, query)
 
